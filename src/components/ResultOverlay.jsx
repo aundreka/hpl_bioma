@@ -5,16 +5,15 @@ import ScratchCard from "./ScratchCard";
 import { Cta } from "./Cta";
 import logo from "../images/logo.webp";
 import title from "../images/Scratch to reveal your discount today.webp";
-import flowerTop from "../images/flower_background.webp";
-import flowerBottom from "../images/flower_background_big.webp";
 import discountArt from "../images/up_to_60_off_bundle.webp";
-import { flowerLayout } from "../config/flowerLayout";
 
 const REVEAL_TO_END_DELAY_MS = 2500;
 const SCRATCH_HINT_DELAY_MS = 1200;
-const CARD_ASPECT_RATIO = "434 / 569";
+const CARD_WIDTH = 690;
+const CARD_HEIGHT = Math.round((CARD_WIDTH * 569) / 434);
 
 const zoomMaskRef = { current: null };
+const MotionDiv = motion.div;
 
 const ResultOverlay = ({ revealed, onRevealed, onComplete, centerRef, onShowResultChange }) => {
   const [showScratchHint, setShowScratchHint] = useState(false);
@@ -38,33 +37,19 @@ const ResultOverlay = ({ revealed, onRevealed, onComplete, centerRef, onShowResu
   }, [onShowResultChange]);
 
   return createPortal(
-    <motion.div
-      className="fixed inset-0 bioma-viewport-bg"
-      style={{ zIndex: 600 }}
+    <MotionDiv
+      className="bioma-overlay"
+      style={{ zIndex: 600, isolation: "isolate" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.35 }}
     >
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <img
-          src={flowerTop}
-          alt=""
-          className="absolute opacity-95"
-          style={flowerLayout.overlay.topRight}
-        />
-        <img
-          src={flowerBottom}
-          alt=""
-          className="absolute opacity-95"
-          style={flowerLayout.overlay.bottomLeft}
-        />
-      </div>
       <div
-        className="fixed left-0 top-0 h-screen w-screen pointer-events-none"
-        style={{ backgroundColor: "rgba(255, 255, 255, 0.7)" }}
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundColor: "rgba(255, 255, 255, 0.7)", zIndex: 0 }}
       />
 
-      <div ref={centerRef} className="absolute inset-0">
+      <div ref={centerRef} className="absolute inset-0" style={{ zIndex: 1 }}>
         <div className="relative flex h-full w-full flex-col items-center px-[120px] pt-[120px] pb-[110px] text-white">
           <img src={logo} alt="Bioma" className="relative z-10 mt-[16px] w-[300px] object-contain" />
           <img
@@ -73,12 +58,9 @@ const ResultOverlay = ({ revealed, onRevealed, onComplete, centerRef, onShowResu
             className="relative z-10 mt-[46px] w-[780px] object-contain"
           />
 
-          <motion.div
-            className="relative z-10 mt-[120px] w-[690px]"
-            style={{ aspectRatio: CARD_ASPECT_RATIO }}
-            initial={{ scale: 0.9, opacity: 0, y: 40 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          <div
+            className="relative z-10 mt-[198px]"
+            style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
           >
             <ScratchCard
               revealSrc={discountArt}
@@ -89,14 +71,14 @@ const ResultOverlay = ({ revealed, onRevealed, onComplete, centerRef, onShowResu
               maskRef={zoomMaskRef}
               disabled={revealed}
             />
-          </motion.div>
+          </div>
 
-          <div className="relative z-10 mt-auto w-[500px]">
+          <div className="absolute bottom-[110px] left-1/2 z-50 w-[680px] -translate-x-1/2">
             <Cta />
           </div>
         </div>
       </div>
-    </motion.div>,
+    </MotionDiv>,
     document.body,
   );
 };

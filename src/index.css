@@ -19,6 +19,7 @@
 @theme {
   --animate-pulsing: pulsing 1s infinite;
   --animate-scratch-hint: scratch-hint 1.8s ease-in-out infinite;
+  --animate-scratch-zigzag: scratch-zigzag 2s cubic-bezier(0.45, 0, 0.2, 1) infinite;
   --animate-endcard-fade-in: endcard-fade-in 500ms ease-out both;
   --animate-endcard-headline: endcard-headline 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 150ms both;
   --animate-endcard-product: endcard-product 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 350ms both;
@@ -99,21 +100,53 @@
       transform: translate(-70px, -10px) rotate(-10deg);
     }
   }
+
+  @keyframes scratch-zigzag {
+    0%, 100% {
+      transform: translateX(-50%) translate(-95px, -32px) rotate(-7deg) scale(1);
+    }
+    16% {
+      transform: translateX(-50%) translate(92px, -8px) rotate(5deg) scale(0.98);
+    }
+    32% {
+      transform: translateX(-50%) translate(-88px, 22px) rotate(-6deg) scale(0.98);
+    }
+    48% {
+      transform: translateX(-50%) translate(86px, 52px) rotate(6deg) scale(0.99);
+    }
+    64% {
+      transform: translateX(-50%) translate(-76px, 82px) rotate(-5deg) scale(0.99);
+    }
+    80% {
+      transform: translateX(-50%) translate(70px, 108px) rotate(4deg) scale(1);
+    }
+  }
 }
 
 html,
 body {
   margin: 0;
-  background: radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #274944 72%, #203d39 100%);
+  background-color: #274944;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  min-height: 100%;
 }
 
 .app-wrapper {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #274944 72%, #203d39 100%);
+}
+
+.bioma-overlay {
+  position: fixed;
+  inset: 0;
+  overflow: visible;
 }
 
 .app {
@@ -129,6 +162,9 @@ body {
 }
 
 .bioma-viewport-bg {
-  background:
-    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #274944 72%, #203d39 100%);
+  background-color: #274944;
+  background-image: url("./images/bg.webp");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: auto 100%;
 }

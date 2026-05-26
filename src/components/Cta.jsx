@@ -12,7 +12,7 @@ export const Cta = ({ className = "" }) => {
 
   return (
     <div className={`flex justify-center items-center ${className}`}>
-      <button className="animate-pulsing inline-block" onClick={handleClickAction}>
+      <button className="animate-pulsing block w-full" onClick={handleClickAction}>
         <img src={ctaButton} alt="Shop now" className="w-full object-contain block" />
       </button>
     </div>

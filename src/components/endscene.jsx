@@ -1,6 +1,62 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import endsceneSfx from "../images/sfx/endscene.mp3";
 
+const DEFAULT_VIDEO_ASPECT = {
+  portrait: 1246 / 1662,
+  landscape: 1662 / 1246,
+};
+
+const STRETCH_BLEND = 0.5;
+const MAX_NARROW_STRETCH = 1.08;
+
+const getHybridVideoSize = (viewportWidth, viewportHeight, videoAspect) => {
+  if (!viewportWidth || !viewportHeight || !videoAspect) {
+    return { widthPct: 100, heightPct: 100 };
+  }
+
+  const viewportAspect = viewportWidth / viewportHeight;
+  let targetAspect =
+    videoAspect * Math.pow(viewportAspect / videoAspect, STRETCH_BLEND);
+
+  if (viewportAspect < videoAspect) {
+    targetAspect = Math.max(targetAspect, videoAspect / MAX_NARROW_STRETCH);
+  }
+
+  if (targetAspect > viewportAspect) {
+    return {
+      widthPct: (targetAspect / viewportAspect) * 100,
+      heightPct: 100,
+    };
+  }
+
+  return {
+    widthPct: 100,
+    heightPct: (viewportAspect / targetAspect) * 100,
+  };
+};
+
+const getInitialIsLandscape = () => {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth >= window.innerHeight;
+};
+
+const getInitialVideoSize = () => {
+  if (typeof window === "undefined") {
+    return { widthPct: 100, heightPct: 100 };
+  }
+
+  const isLandscape = getInitialIsLandscape();
+  const videoAspect = isLandscape
+    ? DEFAULT_VIDEO_ASPECT.landscape
+    : DEFAULT_VIDEO_ASPECT.portrait;
+
+  return getHybridVideoSize(
+    window.innerWidth,
+    window.innerHeight,
+    videoAspect,
+  );
+};
+
 export const EndScene = ({
   srcPortrait,
   srcLandscape,
@@ -9,18 +65,11 @@ export const EndScene = ({
   autoPlay = true,
   loop = true,
 }) => {
-  const targetAspectRatio = 16 / 9;
-  const extremeRatioThreshold = 1.8;
-
   const videoRef = useRef(null);
-  const containerRef = useRef(null);
+  const videoAspectBySrcRef = useRef({});
 
-  const [containerSize, setContainerSize] = useState({
-    widthPct: 100,
-    heightPct: 100,
-  });
-  const [isLandscape, setIsLandscape] = useState(false);
-  const [portraitTopBorderHeight, setPortraitTopBorderHeight] = useState(0);
+  const [isLandscape, setIsLandscape] = useState(getInitialIsLandscape);
+  const [videoSize, setVideoSize] = useState(getInitialVideoSize);
 
   const computeLayout = useCallback(() => {
     const width = window.innerWidth;
@@ -29,35 +78,27 @@ export const EndScene = ({
     setIsLandscape(!isPortrait);
 
     const src = isPortrait ? srcPortrait : srcLandscape;
-    const normalizedRatio = width > height ? width / height : height / width;
+    const fallbackAspect = isPortrait
+      ? DEFAULT_VIDEO_ASPECT.portrait
+      : DEFAULT_VIDEO_ASPECT.landscape;
+    const videoAspect = videoAspectBySrcRef.current[src] || fallbackAspect;
+    const nextVideoSize = getHybridVideoSize(width, height, videoAspect);
 
-    let widthPct = 100;
-    let heightPct = 100;
-
-    if (normalizedRatio > extremeRatioThreshold) {
-      if (isPortrait) {
-        const targetHeight = width * targetAspectRatio;
-        heightPct = (targetHeight / height) * 100;
-      } else {
-        const targetWidth = height * targetAspectRatio;
-        widthPct = (targetWidth / width) * 100;
-      }
-    }
-
-    const containerHeight = height * (heightPct / 100);
-    const topGap = Math.max(0, (height - containerHeight) / 2);
-    setPortraitTopBorderHeight((prev) =>
-      prev === topGap ? prev : topGap,
-    );
-
-    setContainerSize((prev) => {
-      if (prev.widthPct === widthPct && prev.heightPct === heightPct)
+    setVideoSize((prev) => {
+      if (
+        prev.widthPct === nextVideoSize.widthPct &&
+        prev.heightPct === nextVideoSize.heightPct
+      ) {
         return prev;
-      return { widthPct, heightPct };
+      }
+
+      return nextVideoSize;
     });
 
     const video = videoRef.current;
     if (!video) return;
+
+    video.dataset.endSceneSrc = src;
 
     const current = video.currentSrc || video.src || "";
     const isAlready = current.includes(src);
@@ -95,6 +136,17 @@ export const EndScene = ({
     }
   }, [scheduleOrientationUpdate, autoPlay]);
 
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video?.videoHeight) return;
+
+    const src = video.dataset.endSceneSrc;
+    if (!src) return;
+
+    videoAspectBySrcRef.current[src] = video.videoWidth / video.videoHeight;
+    scheduleOrientationUpdate();
+  }, [scheduleOrientationUpdate]);
+
   useEffect(() => {
     const attach = () => {
       window.addEventListener("resize", scheduleOrientationUpdate, {
@@ -130,10 +182,6 @@ export const EndScene = ({
     syncWindowActivityState();
     return detach;
   }, [scheduleOrientationUpdate, syncWindowActivityState]);
-
-  useEffect(() => {
-    computeLayout();
-  }, [computeLayout]);
 
   useEffect(() => {
     const audio = new Audio(endsceneSfx);
@@ -211,15 +259,14 @@ export const EndScene = ({
     }
   };
 
-  const containerStyle = {
-    width: `${containerSize.widthPct}%`,
-    height: `${containerSize.heightPct}%`,
-  };
-
   return (
     <div
       onClick={handleClickAction}
       style={{
+        position: "fixed",
+        inset: 0,
+        width: "100vw",
+        height: "100dvh",
         overflow: "hidden",
         overscrollBehavior: "none",
         touchAction: "none",
@@ -228,33 +275,18 @@ export const EndScene = ({
         cursor: "pointer",
       }}
     >
-      {!isLandscape && (
-        <div
-          className="endscene-portrait-top-border fixed -top-2 left-1/2 -translate-x-1/2 bg-[#070C28] w-[110%]"
-          style={{
-            height: `${portraitTopBorderHeight + 50}px`,
-            pointerEvents: "none",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 50%, #070C28 90%)",
-            maskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 50%, #070C28 90%)",
-          }}
-        />
-      )}
       <div
-        ref={containerRef}
         id="video-container"
         style={{
-          position: "fixed",
-          left: "50%",
-          top: "50%",
+          position: "absolute",
+          inset: 0,
           zIndex: 9999,
           overflow: "hidden",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transform: "translate(-50%, -50%)",
-          ...containerStyle,
+          width: "100%",
+          height: "100%",
         }}
       >
         <video
@@ -264,11 +296,15 @@ export const EndScene = ({
           playsInline={playsInline}
           autoPlay={autoPlay}
           loop={loop}
+          onLoadedMetadata={handleLoadedMetadata}
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
+            width: `${videoSize.widthPct}%`,
+            height: `${videoSize.heightPct}%`,
+            maxWidth: "none",
+            maxHeight: "none",
+            objectFit: "fill",
             display: "block",
+            flex: "0 0 auto",
           }}
         />
       </div>

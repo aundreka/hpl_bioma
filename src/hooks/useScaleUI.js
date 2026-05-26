@@ -14,6 +14,29 @@ const applyCenterTransform = (node, data, baseW, baseH) => {
   node.style.transform = `scale(${scale})`;
 };
 
+const getViewportSize = (fallbackNode) => {
+  const visualViewport = window.visualViewport;
+  if (visualViewport?.width && visualViewport?.height) {
+    return {
+      viewportW: visualViewport.width,
+      viewportH: visualViewport.height,
+    };
+  }
+
+  if (window.innerWidth && window.innerHeight) {
+    return {
+      viewportW: window.innerWidth,
+      viewportH: window.innerHeight,
+    };
+  }
+
+  const { width, height } = fallbackNode.getBoundingClientRect();
+  return {
+    viewportW: width,
+    viewportH: height,
+  };
+};
+
 export default function useScaleUI(baseW = 420, baseH = 820) {
   const appRef = useRef(null);
   const wrapperRef = useRef(null);
@@ -35,8 +58,7 @@ export default function useScaleUI(baseW = 420, baseH = 820) {
     if (!wrapper) return;
 
     const scaleUI = () => {
-      const { width: viewportW, height: viewportH } =
-        wrapper.getBoundingClientRect();
+      const { viewportW, viewportH } = getViewportSize(wrapper);
 
       if (!viewportW || !viewportH) return;
 
@@ -85,11 +107,15 @@ export default function useScaleUI(baseW = 420, baseH = 820) {
     const ro = new ResizeObserver(scaleUI);
     ro.observe(wrapper);
 
+    window.visualViewport?.addEventListener("resize", scaleUI);
     window.addEventListener("orientationchange", scaleUI);
+    window.addEventListener("resize", scaleUI);
 
     return () => {
       ro.disconnect();
+      window.visualViewport?.removeEventListener("resize", scaleUI);
       window.removeEventListener("orientationchange", scaleUI);
+      window.removeEventListener("resize", scaleUI);
     };
   }, [baseW, baseH]);
 

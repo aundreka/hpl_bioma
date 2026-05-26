@@ -5,8 +5,18 @@ import scratchingSfx from "../images/sfx/scratching.wav";
 import revealSfx from "../images/sfx/reveal.wav";
 
 const REVEAL_THRESHOLD = 0.55;
-const SCRATCH_VOLUME = 0.6;
+const SCRATCH_VOLUME = 1;
 const REVEAL_VOLUME = 0.8;
+const CARD_RADIUS = 28;
+const CARD_EDGE_GUARD_COLOR = "#bec8c7";
+const MAX_CANVAS_DIMENSION = 1800;
+
+const getSafeCanvasScale = (w, h, visualScale) => {
+  const dpr = window.devicePixelRatio || 1;
+  const displayScale = Math.max(1, dpr * visualScale);
+  const dimensionCap = MAX_CANVAS_DIMENSION / Math.max(w, h);
+  return Math.max(0.5, Math.min(displayScale, dimensionCap));
+};
 
 const getContainRect = (sourceW, sourceH, targetW, targetH) => {
   if (!sourceW || !sourceH || !targetW || !targetH) {
@@ -23,6 +33,22 @@ const getContainRect = (sourceW, sourceH, targetW, targetH) => {
     w,
     h,
   };
+};
+
+const fillRoundedRect = (ctx, x, y, w, h, r) => {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fill();
 };
 
 const sharedScratchAudio =
@@ -185,11 +211,14 @@ function ScratchCard({
   const scratchMaskRef = maskRef;
   const imagesLoadedRef = useRef(false);
   const revealedRef = useRef(revealed);
-  revealedRef.current = revealed;
   const disabledRef = useRef(disabled);
-  disabledRef.current = disabled;
   const [hideHint, setHideHint] = useState(false);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [size, setSize] = useState({ w: 0, h: 0, visualScale: 1 });
+
+  useLayoutEffect(() => {
+    revealedRef.current = revealed;
+    disabledRef.current = disabled;
+  }, [revealed, disabled]);
 
   useLayoutEffect(() => {
     const node = containerRef.current;
@@ -198,19 +227,30 @@ function ScratchCard({
       const w = node.offsetWidth;
       const h = node.offsetHeight;
       if (!w || !h) return;
-      setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+      const rect = node.getBoundingClientRect();
+      const visualScale = rect.width && rect.height
+        ? Math.max(rect.width / w, rect.height / h)
+        : 1;
+      setSize((prev) => (
+        prev.w === w && prev.h === h && prev.visualScale === visualScale
+          ? prev
+          : { w, h, visualScale }
+      ));
     };
     measure();
+    const measureNextFrame = () => requestAnimationFrame(measure);
     let ro = null;
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(measure);
+      ro = new ResizeObserver(measureNextFrame);
       ro.observe(node);
     }
     window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
     window.addEventListener("orientationchange", measure);
     return () => {
       if (ro) ro.disconnect();
       window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
       window.removeEventListener("orientationchange", measure);
     };
   }, []);
@@ -218,14 +258,16 @@ function ScratchCard({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !size.w || !size.h) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = getSafeCanvasScale(size.w, size.h, size.visualScale);
 
-    canvas.width = size.w * dpr;
-    canvas.height = size.h * dpr;
+    canvas.width = Math.round(size.w * dpr);
+    canvas.height = Math.round(size.h * dpr);
     canvas.style.width = `${size.w}px`;
     canvas.style.height = `${size.h}px`;
     const ctx = canvas.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const scaleX = canvas.width / size.w;
+    const scaleY = canvas.height / size.h;
+    ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
 
     if (!scratchMaskRef.current) {
       scratchMaskRef.current = document.createElement("canvas");
@@ -254,6 +296,8 @@ function ScratchCard({
       if (!cover) return;
       ctx.globalCompositeOperation = "source-over";
       ctx.clearRect(0, 0, size.w, size.h);
+      ctx.fillStyle = CARD_EDGE_GUARD_COLOR;
+      fillRoundedRect(ctx, 0, 0, size.w, size.h, CARD_RADIUS);
       const coverRect = getContainRect(
         cover.naturalWidth || cover.width,
         cover.naturalHeight || cover.height,
@@ -281,7 +325,7 @@ function ScratchCard({
       cover.src = cardCover;
       coverImgRef.current = cover;
     }
-  }, [size.w, size.h, scratchMaskRef]);
+  }, [size.w, size.h, size.visualScale, scratchMaskRef]);
 
   const activeTouchIdRef = useRef(null);
 
@@ -491,18 +535,25 @@ function ScratchCard({
   }, [size.w, size.h]);
 
   return (
-    <div ref={containerRef} className="relative select-none w-full h-full">
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-[28px] pointer-events-none">
-        <img
-          src={revealSrc}
-          alt=""
-          draggable={false}
-          className="w-full h-full object-cover"
-        />
-      </div>
+    <div
+      ref={containerRef}
+      className="relative select-none w-full h-full overflow-hidden rounded-[28px]"
+      style={{
+        isolation: "isolate",
+      }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("${revealSrc}")`,
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
+        }}
+      />
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 touch-none"
+        className="absolute inset-0 touch-none rounded-[28px]"
         style={{
           opacity: revealed ? 0 : 1,
           transition: "opacity 200ms ease-out",
@@ -514,13 +565,15 @@ function ScratchCard({
         onMouseLeave={onUp}
       />
       {showHint && !revealed && !hideHint && size.w > 0 && (
-        <div className="absolute right-[6%] bottom-[4%] flex items-center justify-center pointer-events-none">
+        <div
+          className="absolute left-1/2 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ width: size.w * 0.28 }}
+        >
           <img
             src={handPointer}
             alt=""
             draggable={false}
-            className="animate-scratch-hint drop-shadow-lg"
-            style={{ width: size.w * 0.28, height: "auto" }}
+            className="block w-full animate-scratch-zigzag drop-shadow-lg"
           />
         </div>
       )}
