@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Figtree";
+  src: url("./images/font/Figtree-Bold.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("./images/font/Poppins-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --animate-pulsing: pulsing 1s infinite;
+  --animate-scratch-hint: scratch-hint 1.8s ease-in-out infinite;
+  --animate-endcard-fade-in: endcard-fade-in 500ms ease-out both;
+  --animate-endcard-headline: endcard-headline 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 150ms both;
+  --animate-endcard-product: endcard-product 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 350ms both;
+  --animate-endcard-cta: endcard-cta 500ms ease-out 600ms both;
+
+  @keyframes endcard-fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes endcard-headline {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) scale(0.85);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes endcard-product {
+    0% {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes endcard-cta {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulsing {
+    0% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.1);
+    }
+
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes scratch-hint {
+    0% {
+      transform: translate(-70px, -10px) rotate(-10deg);
+    }
+    25% {
+      transform: translate(70px, 10px) rotate(8deg);
+    }
+    50% {
+      transform: translate(-60px, 15px) rotate(-6deg);
+    }
+    75% {
+      transform: translate(65px, -15px) rotate(10deg);
+    }
+    100% {
+      transform: translate(-70px, -10px) rotate(-10deg);
+    }
+  }
+}
+
+html,
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #294b46 72%, #24433f 100%);
+}
+
+.app-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #294b46 72%, #24433f 100%);
+}
+
+.app {
+  position: absolute;
+  width: var(--app-base-w, 420px);
+  height: var(--app-base-h, 820px);
+  left: var(--app-left, 0);
+  top: var(--app-top, 0);
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: top left;
+  will-change: transform;
+  z-index: 1;
+}
+
+.bioma-viewport-bg {
+  background:
+    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #294b46 72%, #24433f 100%);
+}
