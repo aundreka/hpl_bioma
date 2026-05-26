@@ -104,7 +104,7 @@
 html,
 body {
   margin: 0;
-  background: radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #294b46 72%, #24433f 100%);
+  background: radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #274944 72%, #203d39 100%);
 }
 
 .app-wrapper {
@@ -113,7 +113,7 @@ body {
   height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #294b46 72%, #24433f 100%);
+    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #274944 72%, #203d39 100%);
 }
 
 .app {
@@ -130,5 +130,5 @@ body {
 
 .bioma-viewport-bg {
   background:
-    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #294b46 72%, #24433f 100%);
+    radial-gradient(circle at 50% 8%, #4d746e 0%, #3a5f59 38%, #274944 72%, #203d39 100%);
 }
